@@ -653,6 +653,36 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* ============================================
+           ANNOUNCEMENT BANNER — custom effects (shake / scroll)
+           Tailwind ไม่มี animate-shake / marquee ในตัว จึงประกาศเอง
+           ============================================ */
+        @keyframes ann-shake-kf {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-4px); }
+            40%, 60% { transform: translateX(4px); }
+        }
+        .ann-effect-shake {
+            animation: ann-shake-kf 0.8s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes ann-marquee-kf {
+            0%   { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .ann-marquee-wrap {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            display: block;
+        }
+        .ann-marquee-text {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+            animation: ann-marquee-kf 12s linear infinite;
+        }
     </style>
 
     <!-- Google AdSense Verification -->
@@ -2169,9 +2199,9 @@
             { id: 32, date: "2026-05-25", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 209-287, 367-398 การบรรยายครั้งที่ 1", teacher: "อ.ดร.สุรสิทธิ์ แสงวิโรจน์พัฒน์", group: 2, summaryUrl: "https://drive.google.com/file/d/1viCtmea9eYCJc6Q15WzCzjYEtdAR77Ii/view?usp=sharing" },
             { id: 35, date: "2026-05-25", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 59-106 การบรรยายครั้งที่ 1", teacher: "ศ.พิเศษ ดร.เกียรติขจร วัจนะสวัสดิ์", group: 2, summaryUrl: "https://drive.google.com/file/d/1t6io9sa7E_gwYV0-_6WqhbSBgwYo9ZgS/view?usp=sharing" },
             { id: 36, date: "2026-05-22", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 288-366/4 การบรรยายครั้งที่ 1", teacher: "ศ.พิเศษ ม.ล.ไกรฤกษ์ เกษมสันต์", group: 2, summaryUrl: "https://drive.google.com/file/d/1ogl03ynuoDzezC41EW8uCo2RsqNu0jxO/view?usp=sharing" },
-            { id: 39, date: "2026-05-22", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 1", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
-            { id: 12, date: "2026-06-02", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 3", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
-            { id: 21, date: "2026-05-27", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 2", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 39, date: "2026-05-22", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 1", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 12, date: "2026-06-02", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 3", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 21, date: "2026-05-27", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 2", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
             { id: 48, date: "2026-05-11", term: "ภาค1", subject: "คู่มือการศึกษา สมัยที่ 79 ปีการศึกษา 2569", teacher: "คณะบรรณาธิการ ภาค 1", group: 6 },
             { id: 5,  date: "2026-06-04", term: "ภาค1", subject: "รวมคำบรรยาย ภาค 1 เล่ม 1", teacher: "คณะบรรณาธิการ ภาค 1", group: 6 },
             { id: 41, date: "2026-05-21", term: "ภาค1", subject: "กฎหมายแรงงาน การบรรยายครั้งที่ 2", teacher: "อ.อิสรา วรรณสวาท", group: 3, summaryUrl: "https://drive.google.com/file/d/17KLqE8dCDILIIt-kjoANeCI9oAl55lSX/view?usp=sharing" },
@@ -2200,7 +2230,7 @@
             { id: 24, date: "2026-05-26", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 1-58, 107-208 การบรรยายครั้งที่ 1", teacher: "อ.อุทัย โสภาโชติ", group: 2 },
             { id: 25, date: "2026-05-26", term: "ภาค1", subject: "ตัวแทน ประกันภัย ตั๋วเงิน บัญชีเดินสะพัด การบรรยายครั้งที่ 2", teacher: "อ.ประทีป เฉลิมภัทรกุล", group: 1 },
             { id: 49, date: "2026-06-08", term: "ภาค1", subject: "รวมคำบรรยาย ภาค 1 เล่ม 2", teacher: "คณะบรรณาธิการ ภาค 1", group: 6 },
-            { id: 50, date: "2026-06-08", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 4", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 50, date: "2026-06-08", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 4", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
             { id: 51, date: "2026-06-08", term: "ภาค1", subject: "กฎหมายปกครอง การบรรยายครั้งที่ 3", teacher: "ศ.พิเศษ ดร.จิรนิติ หะวานนท์", group: 3 },
             { id: 52, date: "2026-06-08", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 209-287, 367-398 การบรรยายครั้งที่ 3", teacher: "อ.ดร.สุรสิทธิ์ แสงวิโรจน์พัฒน์", group: 2 },
             { id: 53, date: "2026-06-08", term: "ภาค1", subject: "กฎหมายทรัพย์สินทางปัญญา การบรรยายครั้งที่ 2", teacher: "อ.ไมตรี สุเทพากุล", group: 3 },
@@ -2226,7 +2256,7 @@
             { id: 73, date: "2026-06-15", term: "ภาค1", subject: "นิติกรรม - สัญญา การบรรยายครั้งที่ 4", teacher: "อ.บวรศักดิ์ ทวิพัฒน์", group: 1 },
             { id: 74, date: "2026-06-15", term: "ภาค1", subject: "ซื้อขาย เช่าทรัพย์ เช่าซื้อ การบรรยายครั้งที่ 4", teacher: "ศ.กิตติคุณ ดร.วิษณุ เครืองาม", group: 1 },
             { id: 75, date: "2026-06-15", term: "ภาค1", subject: "กฎหมายภาษีอากร การบรรยายครั้งที่ 1", teacher: "อ.วิชัย จิตตาณิชย์", group: 3 },
-            { id: 76, date: "2026-06-16", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 5", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 76, date: "2026-06-16", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 5", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
             { id: 77, date: "2026-06-16", term: "ภาค1", subject: "กฎหมายทรัพย์สินทางปัญญา การบรรยายครั้งที่ 3", teacher: "อ.ไมตรี สุเทพากุล", group: 3 },
             { id: 78, date: "2026-06-16", term: "ภาค1", subject: "กฎหมายแรงงาน การบรรยายครั้งที่ 5", teacher: "อ.อิสรา วรรณสวาท", group: 3 },
             { id: 79, date: "2026-06-16", term: "ภาค1", subject: "ตัวแทน ประกันภัย ตั๋วเงิน บัญชีเดินสะพัด การบรรยายครั้งที่ 4", teacher: "อ.ประทีป เฉลิมภัทรกุล", group: 1 },
@@ -2245,7 +2275,7 @@
             { id: 92, date: "2026-06-22", term: "ภาค1", subject: "กฎหมายอาญา มาตรา 209-287, 367-398 การบรรยายครั้งที่ 5", teacher: "อ.ดร.สุรสิทธิ์ แสงวิโรจน์พัฒน์", group: 2 },
             { id: 93, date: "2026-06-22", term: "ภาค1", subject: "ซื้อขาย เช่าทรัพย์ เช่าซื้อ การบรรยายครั้งที่ 5", teacher: "ศ.กิตติคุณ ดร.วิษณุ เครืองาม", group: 1 },
             { id: 94, date: "2026-06-22", term: "ภาค1", subject: "กฎหมายทรัพย์สินทางปัญญา การบรรยายครั้งที่ 4", teacher: "อ.ไมตรี สุเทพากุล", group: 3 },
-            { id: 95, date: "2026-06-23", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 เล่ม 6", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 95, date: "2026-06-23", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 6", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
             { id: 96, date: "2026-06-23", term: "ภาค1", subject: "กฎหมายแรงงาน การบรรยายครั้งที่ 6", teacher: "อ.อิสรา วรรณสวาท", group: 3 },
             { id: 97, date: "2026-06-23", term: "ภาค1", subject: "ครอบครัว การบรรยายครั้งที่ 6", teacher: "ศ.พิเศษ ประสพสุข บุญเดช", group: 1 },
             { id: 98, date: "2026-06-23", term: "ภาค1", subject: "มรดก การบรรยายครั้งที่ 5", teacher: "อ.กีรติ กาญจนรินทร์", group: 1 },
@@ -2268,7 +2298,12 @@
             { id: 115, date: "2026-06-29", term: "ภาค1", subject: "กฎหมายภาษีอากร การบรรยายครั้งที่ 3", teacher: "อ.วิชัย จิตตาณิชย์", group: 3 },
             { id: 116, date: "2026-06-29", term: "ภาค1", subject: "กฎหมายภาษีอากร การบรรยายครั้งที่ 2", teacher: "อ.วิชัย จิตตาณิชย์", group: 3 },
             { id: 117, date: "2026-06-29", term: "ภาค1", subject: "ซื้อขาย เช่าทรัพย์ เช่าซื้อ การบรรยายครั้งที่ 6", teacher: "ศ.กิตติคุณ ดร.วิษณุ เครืองาม", group: 1 },
-            { id: 118, date: "2026-06-29", term: "ภาค1", subject: "ละเมิด การบรรยายครั้งที่ 5", teacher: "อ.ไสลเกษ วัฒนพันธุ์", group: 1 }
+            { id: 118, date: "2026-06-29", term: "ภาค1", subject: "ละเมิด การบรรยายครั้งที่ 5", teacher: "อ.ไสลเกษ วัฒนพันธุ์", group: 1 },
+            { id: 119, date: "2026-06-30", term: "ภาค1", subject: "บทบรรณาธิการ ภาค 1 ฉบับที่ 7", teacher: "คณะบรรณาธิการ ภาค 1", group: 5 },
+            { id: 120, date: "2026-06-30", term: "ภาค1", subject: "ตัวแทน ประกันภัย ตั๋วเงิน บัญชีเดินสะพัด การบรรยายครั้งที่ 6", teacher: "อ.ประทีป เฉลิมภัทรกุล", group: 1 },
+            { id: 121, date: "2026-06-30", term: "ภาค1", subject: "กฎหมายแรงงาน การบรรยายครั้งที่ 7", teacher: "อ.อิสรา วรรณสวาท", group: 3 },
+            { id: 122, date: "2026-06-30", term: "ภาค1", subject: "มรดก การบรรยายครั้งที่ 6", teacher: "อ.กีรติ กาญจนรินทร์", group: 1 },
+            { id: 123, date: "2026-06-30", term: "ภาค1", subject: "ครอบครัว การบรรยายครั้งที่ 8", teacher: "ศ.พิเศษ ประสพสุข บุญเดช", group: 1 }
         ];
 
         const SORTED_DATA = [...rawInitialData].sort((a, b) => a.id - b.id);
@@ -2448,10 +2483,10 @@
             if (active.length === 0) return;
 
             const iconMap = {
-                info:    { icon: 'info',            bg: 'bg-blue-50 dark:bg-blue-900/30',   border: 'border-blue-200 dark:border-blue-700/50',   text: 'text-blue-800 dark:text-blue-200',   iconColor: 'text-blue-500 dark:text-blue-400',   dot: 'bg-blue-500 dark:bg-blue-400' },
-                warning: { icon: 'alert-triangle',  bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-700/50', text: 'text-amber-800 dark:text-amber-200', iconColor: 'text-amber-500 dark:text-amber-400', dot: 'bg-amber-500 dark:bg-amber-400' },
-                success: { icon: 'check-circle-2',  bg: 'bg-green-50 dark:bg-green-900/30',  border: 'border-green-200 dark:border-green-700/50',  text: 'text-green-800 dark:text-green-200',  iconColor: 'text-green-500 dark:text-green-400',  dot: 'bg-green-500 dark:bg-green-400' },
-                alert:   { icon: 'zap',             bg: 'bg-red-50 dark:bg-red-900/30',    border: 'border-red-200 dark:border-red-700/50',    text: 'text-red-800 dark:text-red-200',    iconColor: 'text-red-500 dark:text-red-400',    dot: 'bg-red-500 dark:bg-red-400' },
+                info:    { icon: 'info',            bg: 'bg-blue-50 dark:bg-blue-900/30',   border: 'border-blue-200 dark:border-blue-700/50',   text: 'text-blue-800 dark:text-blue-200',   iconColor: 'text-blue-500 dark:text-blue-400',   dot: 'bg-blue-500 dark:bg-blue-400',   msgClass: 'font-medium opacity-80' },
+                warning: { icon: 'alert-triangle',  bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-200 dark:border-amber-700/50', text: 'text-amber-800 dark:text-amber-200', iconColor: 'text-amber-500 dark:text-amber-400', dot: 'bg-amber-500 dark:bg-amber-400', msgClass: 'font-medium opacity-80' },
+                success: { icon: 'check-circle-2',  bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-400 dark:border-emerald-500/60', text: 'text-emerald-900 dark:text-emerald-200', iconColor: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500 dark:bg-emerald-400', msgClass: 'font-semibold opacity-95' },
+                alert:   { icon: 'zap',             bg: 'bg-red-50 dark:bg-red-900/30',    border: 'border-red-200 dark:border-red-700/50',    text: 'text-red-800 dark:text-red-200',    iconColor: 'text-red-500 dark:text-red-400',    dot: 'bg-red-500 dark:bg-red-400',    msgClass: 'font-medium opacity-80' },
             };
 
             const banner = document.getElementById('announcement-banner');
@@ -2460,15 +2495,29 @@
             banner.innerHTML = active.map((ann, idx) => {
                 const style = iconMap[ann.type || 'info'] || iconMap.info;
                 const delay = idx * 80;
+
+                // --- Effect handling: 'blink' | 'bounce' | 'shake' | 'scroll' (จาก field `effect` ใน Firestore) ---
+                const effect = ann.effect || '';
+                let effectClass = '';
+                if (effect === 'blink') effectClass = 'animate-pulse';
+                else if (effect === 'bounce') effectClass = 'animate-bounce';
+                else if (effect === 'shake') effectClass = 'ann-effect-shake';
+                // 'scroll' ไม่ใช่ class บน container แต่เป็น marquee บนข้อความด้านล่าง
+
+                const messageText = escapeHTML(ann.message || '');
+                const messageHTML = effect === 'scroll'
+                    ? `<p class="leading-relaxed text-xs sm:text-sm ${style.msgClass} ann-marquee-wrap"><span class="ann-marquee-text">${messageText}</span></p>`
+                    : `<p class="leading-relaxed text-xs sm:text-sm ${style.msgClass}">${messageText}</p>`;
+
                 return `
-                <div id="ann-${escapeHTML(ann.id)}" class="announcement-item flex items-start gap-3 sm:gap-3.5 px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl border ${style.bg} ${style.border} ${style.text} text-xs sm:text-sm shadow-sm" style="animation-delay:${delay}ms">
+                <div id="ann-${escapeHTML(ann.id)}" class="announcement-item flex items-start gap-3 sm:gap-3.5 px-4 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl border ${style.bg} ${style.border} ${style.text} text-xs sm:text-sm shadow-sm ${effectClass}" style="animation-delay:${delay}ms">
                     <span class="flex-shrink-0 flex items-center gap-1.5 mt-0.5">
                         <span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${style.dot} animate-pulse"></span>
                         <i data-lucide="${style.icon}" class="w-4 h-4 sm:w-5 sm:h-5 ${style.iconColor}"></i>
                     </span>
                     <div class="flex-1 min-w-0">
                         ${ann.title ? `<p class="font-bold text-xs sm:text-sm mb-1 uppercase tracking-wide opacity-90">${escapeHTML(ann.title)}</p>` : ''}
-                        <p class="leading-relaxed text-xs sm:text-sm font-medium opacity-80">${escapeHTML(ann.message || '')}</p>
+                        ${messageHTML}
                         ${ann.link ? `<a href="${escapeHTML(ann.link)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-bold underline underline-offset-4 opacity-80 hover:opacity-100 transition-opacity"><i data-lucide="external-link" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>${escapeHTML(ann.linkText || 'ดูรายละเอียดเพิ่มเติม')}</a>` : ''}
                     </div>
                     <button type="button" onclick="dismissAnnouncement('${escapeHTML(ann.id)}')" title="ปิดประกาศ"
