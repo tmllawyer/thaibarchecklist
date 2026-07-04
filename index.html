@@ -9751,7 +9751,13 @@ function aiChatFormatMarkdown(text) {
         if (trimmed === '') return '<div class="h-1.5"></div>';
         return `<div>${line}</div>`;
     }).join('');
-    return html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-extrabold text-slate-900 dark:text-white">$1</strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-extrabold text-slate-900 dark:text-white">$1</strong>');
+    // 🔗 แปลง URL ดิบๆ ในคำตอบ AI ให้เป็นลิงก์กดได้ทันที (เปิดแท็บใหม่เสมอ กันคนหลุดออกจากเว็บ)
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+        const clean = url.replace(/[.,)]+$/, ''); // ตัดวรรคตอน . , ) ที่ติดท้ายประโยคมาโดยไม่ตั้งใจ
+        return `<a href="${clean}" target="_blank" rel="noopener noreferrer" class="text-amber-600 dark:text-amber-400 font-bold underline decoration-amber-400/50 hover:decoration-amber-500 underline-offset-2 break-all">${clean}</a>`;
+    });
+    return html;
 }
 
 // เลื่อนแชทลงล่างสุดอัตโนมัติเมื่อมีข้อความใหม่
@@ -9788,6 +9794,25 @@ function aiChatAppendMessage(role, text) {
     return bubble; // คืนอ้างอิง element ไว้อัปเดตทีหลัง (ใช้กับ loading state)
 }
 
+// 📇 การ์ดลิงก์เฟซบุ๊ก — โชว์แทนข้อความ error ธรรมดา เวลาเชื่อมต่อ Gemini ไม่ได้ (โควตาหมด/เน็ตหลุด ฯลฯ)
+function aiChatBuildFacebookErrorCard() {
+    return `
+        <div class="space-y-2">
+            <div>ขณะนี้ระบบ AI ขัดข้องชั่วคราวครับ 🙏 ทักมาคุยกับผมได้เลย ตอบเองทุกข้อความ</div>
+            <a href="https://www.facebook.com/profile.php?id=61590346805351" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-2.5 p-2.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-500/40 rounded-xl hover:border-amber-500 hover:shadow-md transition-all group">
+                <div class="w-9 h-9 flex-shrink-0 rounded-full bg-[#1877F2] flex items-center justify-center">
+                    <i data-lucide="facebook" class="w-5 h-5 text-white"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-slate-800 dark:text-white">ทักไปที่เพจเฟซบุ๊กของผม</div>
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">ตอบเองทุกข้อความครับ 💬</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover:text-amber-500 flex-shrink-0"></i>
+            </a>
+        </div>`;
+}
+
 async function aiChatSend() {
     const input = document.getElementById('ai-chat-input');
     if (!input) return;
@@ -9812,8 +9837,10 @@ async function aiChatSend() {
         aiChatHistory.push({ role: 'model', parts: [{ text: rawReply }] });
     } catch (err) {
         console.error('[AI Chat] Error:', err);
-        const errMsg = 'ขออภัยครับ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ AI ได้ในขณะนี้';
-        if (loadingBubble) loadingBubble.innerHTML = aiChatFormatMarkdown(errMsg);
+        if (loadingBubble) {
+            loadingBubble.innerHTML = aiChatBuildFacebookErrorCard();
+            lucide.createIcons({ root: loadingBubble });
+        }
     } finally {
         if (sendBtn) sendBtn.disabled = false;
         aiChatScrollToBottom();
@@ -9826,7 +9853,7 @@ async function aiChatFetchGeminiResponse(chatHistory) {
     }
 
     // แก้ไข 1: เพิ่มคำว่า -latest ต่อท้ายชื่อโมเดล เพื่อให้ระบบชี้ไปที่ตัวล่าสุดเสมอ (แก้ปัญหา 404 หาโมเดลไม่เจอ)
-    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AI_CHAT_API_KEY}`;
+    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent?key=${AI_CHAT_API_KEY}`;
 
     // 📊 แนบสถานะโควตาคำถามนอกเรื่องแบบสดๆ (คำนวณจาก localStorage จริง) ต่อท้าย System Prompt ทุกครั้งที่ยิง request
     const usedCount = aiChatGetOffTopicCount();
