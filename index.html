@@ -9847,13 +9847,13 @@ async function aiChatSend() {
     }
 }
 
+// 🔀 ลำดับโมเดลสำรอง — ลองตัวแรกก่อนเสมอ (โควตาสูงกว่า) ถ้าพัง/โควตาเต็มจะไล่ลองตัวถัดไปอัตโนมัติ โดยแต่ละโมเดลมีโควตาแยกคนละก้อน
+const AI_CHAT_MODEL_CHAIN = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview', 'gemini-3.5-flash'];
+
 async function aiChatFetchGeminiResponse(chatHistory) {
     if (!AI_CHAT_API_KEY) {
         return 'กรุณาใส่ API Key ในตัวแปร AI_CHAT_API_KEY ก่อนใช้งานนะครับ';
     }
-
-    // แก้ไข 1: เพิ่มคำว่า -latest ต่อท้ายชื่อโมเดล เพื่อให้ระบบชี้ไปที่ตัวล่าสุดเสมอ (แก้ปัญหา 404 หาโมเดลไม่เจอ)
-    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${AI_CHAT_API_KEY}`;
 
     // 📊 แนบสถานะโควตาคำถามนอกเรื่องแบบสดๆ (คำนวณจาก localStorage จริง) ต่อท้าย System Prompt ทุกครั้งที่ยิง request
     const usedCount = aiChatGetOffTopicCount();
@@ -9863,29 +9863,40 @@ async function aiChatFetchGeminiResponse(chatHistory) {
         : `\n\n# Quota Status (สถานะโควตาวันนี้)\nผู้ใช้ใช้โควตาคำถามนอกเรื่องครบ ${AI_OFFTOPIC_DAILY_LIMIT}/${AI_OFFTOPIC_DAILY_LIMIT} ครั้งแล้วสำหรับวันนี้ ห้ามตอบคำถามนอกเรื่องอีกเด็ดขาดในวันนี้แม้จะรู้คำตอบก็ตาม (ห้ามแนบแท็ก [ACTION:OFFTOPIC_USED] อีก เพราะนับครบแล้ว) หากผู้ใช้ถามคำถามนอกเรื่องอีก ให้ตอบด้วยข้อความนี้เท่านั้น: "วันนี้คุณถามคำถามนอกเรื่องครบโควตา ${AI_OFFTOPIC_DAILY_LIMIT} ครั้งแล้วครับ พรุ่งนี้มาถามใหม่ได้นะครับ ถ้าอยากได้คำตอบเชิงลึกตอนนี้ ทักมาคุยกับผมได้ที่เพจเฟซบุ๊กเลยครับ 👉 https://www.facebook.com/profile.php?id=61590346805351" (คำถามเกี่ยวกับการใช้งานเว็บไซต์ Niti Thamma ยังตอบได้ตามปกติไม่จำกัด)`;
 
     const payload = {
-        // แก้ไข 2: เปลี่ยนเป็น systemInstruction (ตัว I ใหญ่ ไม่มีขีดล่าง)
         systemInstruction: {
             parts: [{ text: AI_CHAT_SYSTEM_PROMPT + quotaNote }]
         },
         contents: chatHistory
     };
 
-    const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    let lastError = null;
+    for (const model of AI_CHAT_MODEL_CHAIN) {
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${AI_CHAT_API_KEY}`;
+        try {
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-    if (!response.ok) {
-        // แอบดักจับข้อผิดพลาดแบบละเอียด เผื่อกูเกิลบ่นอะไรกลับมา เราจะได้เห็นใน F12
-        const errorBody = await response.text();
-        console.error("🔥 Gemini API Error Detail:", errorBody);
-        throw new Error(`Gemini API request failed: ${response.status}`);
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error(`🔥 [${model}] Gemini API Error Detail:`, errorBody);
+                lastError = new Error(`Gemini API request failed: ${response.status} (${model})`);
+                continue; // โมเดลนี้พัง/โควตาเต็ม → ไล่ลองตัวถัดไปในลิสต์
+            }
+
+            const data = await response.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) return text;
+            lastError = new Error(`No text in response (${model})`);
+        } catch (err) {
+            console.error(`🔥 [${model}] Fetch failed:`, err);
+            lastError = err;
+        }
     }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text || 'ขออภัยครับ ไม่ได้รับคำตอบจาก AI';
+    throw lastError || new Error('All models in fallback chain failed');
 }
 
 // 👁️ ตรวจสถานะล็อกอิน Google แบบอ่านค่าอย่างเดียว (ไม่แตะฟังก์ชัน auth เดิมแม้แต่บรรทัดเดียว)
