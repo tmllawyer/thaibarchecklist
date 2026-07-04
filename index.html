@@ -9853,7 +9853,7 @@ async function aiChatFetchGeminiResponse(chatHistory) {
     }
 
     // แก้ไข 1: เพิ่มคำว่า -latest ต่อท้ายชื่อโมเดล เพื่อให้ระบบชี้ไปที่ตัวล่าสุดเสมอ (แก้ปัญหา 404 หาโมเดลไม่เจอ)
-    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent?key=${AI_CHAT_API_KEY}`;
+    const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${AI_CHAT_API_KEY}`;
 
     // 📊 แนบสถานะโควตาคำถามนอกเรื่องแบบสดๆ (คำนวณจาก localStorage จริง) ต่อท้าย System Prompt ทุกครั้งที่ยิง request
     const usedCount = aiChatGetOffTopicCount();
