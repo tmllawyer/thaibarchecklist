@@ -107,6 +107,27 @@
             console.error('Load announcements error:', err);
             return [];
           }
+        },
+        // ☁️ ซิงก์ประวัติแชท AI ข้ามอุปกรณ์ — เก็บแยกคอลเลกชันต่างหาก (ai_chat_history) ไม่ยุ่งกับเอกสาร users/{uid} เดิม
+        saveChatHistory: async (uid, history) => {
+          try {
+            const docRef = doc(db, 'ai_chat_history', uid);
+            await setDoc(docRef, { history, updatedAt: serverTimestamp() });
+            return true;
+          } catch (err) {
+            console.error('Save chat history error:', err);
+            return false;
+          }
+        },
+        loadChatHistory: async (uid) => {
+          try {
+            const docRef = doc(db, 'ai_chat_history', uid);
+            const snap = await getDoc(docRef);
+            return snap.exists() ? (snap.data().history || null) : null;
+          } catch (err) {
+            console.error('Load chat history error:', err);
+            return null;
+          }
         }
       };
 
@@ -9654,6 +9675,13 @@ function aiChatSaveHistory() {
     } catch (err) {
         console.error('[AI Chat] บันทึกประวัติไม่สำเร็จ:', err);
     }
+    // ☁️ ซิงก์ขึ้น Firestore ด้วย (เฉพาะผู้ใช้ที่ล็อกอิน Google จริง) เพื่อให้เห็นประวัติเดียวกันทุกอุปกรณ์
+    // ไม่ await เพื่อไม่บล็อก UI — ถ้าซิงก์พัง localStorage ข้างบนยังทำงานได้ตามปกติ
+    if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+        && window._fb && typeof window._fb.saveChatHistory === 'function') {
+        window._fb.saveChatHistory(state.user.uid, aiChatHistory)
+            .catch(err => console.error('[AI Chat] ซิงก์ประวัติขึ้น Firestore ไม่สำเร็จ:', err));
+    }
 }
 
 // ตัดแท็ก [ACTION:...] และ [QUICKREPLY:...] ออกเฉยๆ เพื่อแสดงผลย้อนหลัง — ไม่สั่งงานเว็บซ้ำตอนโหลดประวัติเก่ากลับมา
@@ -9665,22 +9693,41 @@ function aiChatStripTagsForDisplay(text) {
 }
 
 // เรียกครั้งเดียวตอนรู้ UID จริงแล้ว (ดูจุดเรียกใน aiChatUpdateVisibility) — เล่นย้อนประวัติเก่าเข้ากล่องแชท ต่อจากข้อความทักทาย
-function aiChatLoadHistory() {
+// ☁️ ลองดึงจาก Firestore ก่อนเสมอ (ข้อมูลล่าสุดข้ามอุปกรณ์) ถ้าไม่มี/ดึงพลาด ค่อย fallback มาที่ localStorage เดิม
+async function aiChatLoadHistory() {
+    let saved = null;
+
     try {
-        const raw = localStorage.getItem(aiChatGetHistoryKey());
-        if (!raw) return;
-        const saved = JSON.parse(raw);
-        if (!Array.isArray(saved) || !saved.length) return;
-        aiChatHistory = saved;
-        aiChatHistory.forEach(entry => {
-            const role = entry.role === 'user' ? 'user' : 'ai';
-            const rawText = entry.parts?.[0]?.text || '';
-            if (!rawText) return;
-            aiChatAppendMessage(role, aiChatStripTagsForDisplay(rawText));
-        });
+        if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+            && window._fb && typeof window._fb.loadChatHistory === 'function') {
+            const remote = await window._fb.loadChatHistory(state.user.uid);
+            if (Array.isArray(remote) && remote.length) saved = remote;
+        }
     } catch (err) {
-        console.error('[AI Chat] โหลดประวัติไม่สำเร็จ:', err);
+        console.error('[AI Chat] โหลดประวัติจาก Firestore ไม่สำเร็จ:', err);
     }
+
+    if (!saved) {
+        try {
+            const raw = localStorage.getItem(aiChatGetHistoryKey());
+            if (raw) {
+                const local = JSON.parse(raw);
+                if (Array.isArray(local) && local.length) saved = local;
+            }
+        } catch (err) {
+            console.error('[AI Chat] โหลดประวัติไม่สำเร็จ:', err);
+        }
+    }
+
+    if (!saved || !saved.length) return;
+    aiChatHistory = saved;
+    aiChatHistory.forEach(entry => {
+        const role = entry.role === 'user' ? 'user' : 'ai';
+        const rawText = entry.parts?.[0]?.text || '';
+        if (!rawText) return;
+        aiChatAppendMessage(role, aiChatStripTagsForDisplay(rawText));
+    });
+    aiChatSaveHistory(); // ✍️ เขียนกลับ localStorage (+ Firestore) ให้ตรงกับชุดที่ใช้จริง เผื่อเครื่องนี้เคยมีประวัติเก่าคนละชุด
 }
 
 // 📊 ระบบโควตาคำถามนอกเรื่อง (ทั่วไป/กฎหมาย) — 3 ครั้ง/คน/วัน เก็บที่ localStorage แยกตาม UID + วันที่ (รีเซ็ตอัตโนมัติทุกวันใหม่)
