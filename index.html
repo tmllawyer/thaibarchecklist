@@ -9724,12 +9724,13 @@ const AI_CHAT_ACTION_MAP = {
         document.getElementById('filter-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     CLEAR_FILTERS: () => clearDashboardFilter(),
-    SEARCH_DIKA: (value) => { if (value && typeof window.jumpToDikaSearch === 'function') window.jumpToDikaSearch(value); },
+    SEARCH_DIKA: (value) => { if (value && typeof window.jumpToDikaSearch === 'function') { toggleLawSidebar(true); window.jumpToDikaSearch(value); } },
     SEARCH_DIKA_CAT: (value) => {
         if (!value || typeof window.jumpToDikaSearchWithCategory !== 'function') return;
         const sepIdx = value.indexOf(':');
         const cat = (sepIdx === -1 ? value : value.slice(0, sepIdx)).trim();
         const term = sepIdx === -1 ? '' : value.slice(sepIdx + 1).trim();
+        toggleLawSidebar(true);
         window.jumpToDikaSearchWithCategory(term, cat);
     },
     OFFTOPIC_USED: () => aiChatIncrementOffTopicCount()
