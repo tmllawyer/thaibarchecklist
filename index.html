@@ -36,7 +36,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
       import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-      import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where, orderBy }
+      import { getFirestore, doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where, orderBy }
         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
 
@@ -126,6 +126,58 @@
             return snap.exists() ? (snap.data().history || null) : null;
           } catch (err) {
             console.error('Load chat history error:', err);
+            return null;
+          }
+        },
+        // ☁️ ซิงก์คำตอบกระดาษคำตอบจำลอง (Mock Exam Scratchpad) ข้ามอุปกรณ์ — แยกเก็บเป็น subcollection ต่อ uid ต่อข้อ
+        saveExamDraft: async (uid, examId, text) => {
+          try {
+            const docRef = doc(db, 'exam_scratchpad', uid, 'drafts', examId);
+            await setDoc(docRef, { text, updatedAt: serverTimestamp() });
+            return true;
+          } catch (err) {
+            console.error('Save exam draft error:', err);
+            return false;
+          }
+        },
+        loadExamDraft: async (uid, examId) => {
+          try {
+            const docRef = doc(db, 'exam_scratchpad', uid, 'drafts', examId);
+            const snap = await getDoc(docRef);
+            return snap.exists() ? (snap.data().text ?? null) : null;
+          } catch (err) {
+            console.error('Load exam draft error:', err);
+            return null;
+          }
+        },
+        deleteExamDraft: async (uid, examId) => {
+          try {
+            const docRef = doc(db, 'exam_scratchpad', uid, 'drafts', examId);
+            await deleteDoc(docRef);
+            return true;
+          } catch (err) {
+            console.error('Delete exam draft error:', err);
+            return false;
+          }
+        },
+        // ☁️ ซิงก์ผลตรวจข้อสอบของ AI ข้ามอุปกรณ์ — แยกเก็บเป็น subcollection ต่อ uid ต่อข้อเช่นกัน
+        saveGradingResult: async (uid, cacheKey, answerText, resultText) => {
+          try {
+            const docRef = doc(db, 'ai_grading_results', uid, 'results', cacheKey);
+            await setDoc(docRef, { answerText, resultText, updatedAt: serverTimestamp() });
+            return true;
+          } catch (err) {
+            console.error('Save grading result error:', err);
+            return false;
+          }
+        },
+        loadGradingResult: async (uid, cacheKey) => {
+          try {
+            const docRef = doc(db, 'ai_grading_results', uid, 'results', cacheKey);
+            const snap = await getDoc(docRef);
+            return snap.exists() ? snap.data() : null;
+          } catch (err) {
+            console.error('Load grading result error:', err);
             return null;
           }
         }
@@ -6096,6 +6148,7 @@ window.openExamModal = function(idx) {
     // เก็บ draftKey ของกระดาษคำตอบที่กำลังเปิดอยู่ไว้ใน global
     // เพื่อให้ guard เช็คข้อมูลยังไม่บันทึก (ตอนสลับข้อ/ปิดแท็บ) อ้างถึงได้ถูกต้อง
     window._examScratchpadDraftKey = draftKey;
+    window._examScratchpadExamId = examId; // ☁️ เก็บ examId คู่กันไว้ ใช้เป็น doc id ตอนซิงก์ขึ้น Firestore
     window._examScratchpadDirty = false;
     // กันไม่ให้แก้ DOM/วาดไอคอนซ้ำทุกครั้งที่พิมพ์ — ตัวการหลักที่ทำให้หน่วง
     let _dirtyBadgeShown = false;
@@ -6118,6 +6171,13 @@ window.openExamModal = function(idx) {
         const hh = String(t.getHours()).padStart(2, '0');
         const mm = String(t.getMinutes()).padStart(2, '0');
         setSaveStatusUI('<i data-lucide="cloud-check" class="w-3 h-3 text-emerald-500"></i> <span>บันทึกแล้ว ✓ เมื่อ ' + hh + ':' + mm + ' น.</span>');
+        // ☁️ ซิงก์ขึ้น Firestore ด้วย (เฉพาะผู้ใช้ที่ล็อกอิน Google จริง) เพื่อให้เห็นคำตอบเดียวกันทุกอุปกรณ์
+        // ไม่ await เพื่อไม่บล็อก UI — ถ้าซิงก์พัง localStorage ข้างบนยังทำงานได้ตามปกติ
+        if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+            && window._fb && typeof window._fb.saveExamDraft === 'function' && window._examScratchpadExamId) {
+            window._fb.saveExamDraft(state.user.uid, window._examScratchpadExamId, ta.value)
+                .catch(err => console.error('[Exam Scratchpad] ซิงก์ขึ้น Firestore ไม่สำเร็จ:', err));
+        }
     };
 
     // 🗑️ ล้างกระดาษคำตอบ (ย้ายมาจาก inline onclick เดิม เพื่อรีเซ็ตสถานะ Dirty ให้ถูกต้องด้วย)
@@ -6129,6 +6189,12 @@ window.openExamModal = function(idx) {
         window._examScratchpadDirty = false;
         _dirtyBadgeShown = false;
         setSaveStatusUI('<i data-lucide="trash-2" class="w-3 h-3"></i> <span>ล้างกระดาษแล้ว</span>');
+        // ☁️ ลบบน Firestore ด้วย (เฉพาะผู้ใช้ที่ล็อกอิน Google จริง) กันร่างเก่าโผล่กลับมาตอนเปิดเครื่องอื่น
+        if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+            && window._fb && typeof window._fb.deleteExamDraft === 'function' && window._examScratchpadExamId) {
+            window._fb.deleteExamDraft(state.user.uid, window._examScratchpadExamId)
+                .catch(err => console.error('[Exam Scratchpad] ลบ Firestore ไม่สำเร็จ:', err));
+        }
     };
 
     if (scratchpad) {
@@ -6138,6 +6204,20 @@ window.openExamModal = function(idx) {
             setSaveStatusUI('<i data-lucide="cloud-check" class="w-3 h-3 text-emerald-500"></i> <span>โหลดร่างล่าสุดแล้ว</span>');
         } else {
             setSaveStatusUI('<i data-lucide="circle" class="w-2.5 h-2.5 text-slate-300"></i> <span>ยังไม่มีการบันทึก</span>');
+        }
+
+        // ☁️ เช็ก Firestore แบบ background ทีหลัง (ไม่บล็อกการเปิด modal) — ถ้ามีร่างจากอุปกรณ์อื่นและ
+        // ผู้ใช้ยังไม่ได้พิมพ์อะไร/ยังเปิดข้อเดิมอยู่ ค่อยอัปเดตให้ (กันเขียนทับข้อความที่กำลังพิมพ์อยู่)
+        if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+            && window._fb && typeof window._fb.loadExamDraft === 'function') {
+            window._fb.loadExamDraft(state.user.uid, examId).then(remoteText => {
+                const stillSameExam = window._examScratchpadDraftKey === draftKey;
+                const notDirtyYet = !window._examScratchpadDirty;
+                if (stillSameExam && notDirtyYet && typeof remoteText === 'string' && remoteText && remoteText !== scratchpad.value) {
+                    scratchpad.value = remoteText;
+                    setSaveStatusUI('<i data-lucide="cloud-check" class="w-3 h-3 text-emerald-500"></i> <span>โหลดร่างล่าสุดจากอุปกรณ์อื่นแล้ว</span>');
+                }
+            }).catch(err => console.error('[Exam Scratchpad] โหลดจาก Firestore ไม่สำเร็จ:', err));
         }
 
         // 🔑 จุดสำคัญที่แก้หน่วง: ระหว่างพิมพ์ "ไม่แตะ DOM เลย" ยกเว้นครั้งแรกที่เปลี่ยนจาก
@@ -6171,6 +6251,11 @@ window.openExamModal = function(idx) {
                 const ta = document.getElementById('exam-scratchpad');
                 if (ta && window._examScratchpadDraftKey) {
                     localStorage.setItem(window._examScratchpadDraftKey, ta.value);
+                    // ☁️ กันเหนียวซิงก์ขึ้น Firestore ด้วย (เฉพาะผู้ใช้ล็อกอิน Google จริง) เผื่อสลับแอพ/ปิดจอไปเปิดเครื่องอื่นต่อ
+                    if (typeof state !== 'undefined' && state.user && state.user.isAnonymous === false && state.user.uid
+                        && window._fb && typeof window._fb.saveExamDraft === 'function' && window._examScratchpadExamId) {
+                        window._fb.saveExamDraft(state.user.uid, window._examScratchpadExamId, ta.value).catch(() => {});
+                    }
                 }
             }
         });
@@ -10364,6 +10449,26 @@ window.aiGradeExam = async function(forceRefresh) {
         return;
     }
 
+    // ☁️ ไม่เจอแคชในเครื่องนี้ — ลองเช็ค Firestore ก่อนเสียโควตา เผื่อเคยตรวจข้อนี้ไปแล้วจากอุปกรณ์อื่น
+    if (!forceRefresh && window._fb && typeof window._fb.loadGradingResult === 'function') {
+        try {
+            const remote = await window._fb.loadGradingResult(state.user.uid, cacheKey);
+            if (remote && remote.answerText === studentAnswer && remote.resultText) {
+                window._aiGradingCache[cacheKey] = { answerText: remote.answerText, resultText: remote.resultText };
+                aiGradingSaveCache(); // เก็บลง localStorage เครื่องนี้ด้วย กันต้องดึง Firestore ซ้ำ
+                body.innerHTML = aiChatFormatMarkdown(remote.resultText) +
+                    `<div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between gap-2">
+                        <span>☁️ ผลจากการตรวจครั้งก่อน (อุปกรณ์อื่น) — คำตอบไม่เปลี่ยน จึงไม่เสียโควตาซ้ำ</span>
+                        <button type="button" onclick="window.aiGradeExam(true)" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex-shrink-0">ตรวจใหม่</button>
+                    </div>`;
+                if (window.lucide) lucide.createIcons({ root: body });
+                return;
+            }
+        } catch (err) {
+            console.error('[AI Grading] โหลดผลตรวจจาก Firestore ไม่สำเร็จ:', err);
+        }
+    }
+
     const usedCount = aiGradingGetCount();
     if (usedCount >= AI_GRADING_DAILY_LIMIT) {
         body.innerHTML = aiChatBuildFacebookErrorCard().replace(
@@ -10389,6 +10494,11 @@ window.aiGradeExam = async function(forceRefresh) {
         aiGradingUpdateQuotaBadge();
         window._aiGradingCache[cacheKey] = { answerText: studentAnswer, resultText: rawResult };
         aiGradingSaveCache();
+        // ☁️ ซิงก์ผลตรวจขึ้น Firestore ด้วย (ไม่ await กันหน่วง UI) เพื่อให้เห็นผลเดียวกันทุกอุปกรณ์
+        if (window._fb && typeof window._fb.saveGradingResult === 'function') {
+            window._fb.saveGradingResult(state.user.uid, cacheKey, studentAnswer, rawResult)
+                .catch(err => console.error('[AI Grading] ซิงก์ผลตรวจขึ้น Firestore ไม่สำเร็จ:', err));
+        }
         body.innerHTML = aiChatFormatMarkdown(rawResult);
         if (window.lucide) lucide.createIcons({ root: body });
     } catch (err) {
