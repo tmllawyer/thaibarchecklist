@@ -36,7 +36,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
       import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-      import { getFirestore, doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where, orderBy }
+      import { getFirestore, doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where, orderBy, increment }
         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
 
@@ -161,10 +161,11 @@
           }
         },
         // ☁️ ซิงก์ผลตรวจข้อสอบของ AI ข้ามอุปกรณ์ — แยกเก็บเป็น subcollection ต่อ uid ต่อข้อเช่นกัน
-        saveGradingResult: async (uid, cacheKey, answerText, resultText) => {
+        // meta (session/category/question) เป็น optional — ใส่ไว้เพื่อให้หน้า "ประวัติการตรวจ" แสดงรายละเอียดได้โดยไม่ต้องพึ่งข้อมูลอื่น
+        saveGradingResult: async (uid, cacheKey, answerText, resultText, meta) => {
           try {
             const docRef = doc(db, 'ai_grading_results', uid, 'results', cacheKey);
-            await setDoc(docRef, { answerText, resultText, updatedAt: serverTimestamp() });
+            await setDoc(docRef, { answerText, resultText, ...(meta || {}), updatedAt: serverTimestamp() });
             return true;
           } catch (err) {
             console.error('Save grading result error:', err);
@@ -179,6 +180,38 @@
           } catch (err) {
             console.error('Load grading result error:', err);
             return null;
+          }
+        },
+        // 📜 ดึงประวัติผลตรวจข้อสอบ "ทั้งหมด" ของผู้ใช้ เรียงจากล่าสุดก่อน — ใช้กับหน้า "ประวัติการตรวจ"
+        listGradingResults: async (uid) => {
+          try {
+            const q = query(collection(db, 'ai_grading_results', uid, 'results'), orderBy('updatedAt', 'desc'));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (err) {
+            console.error('List grading results error:', err);
+            return [];
+          }
+        },
+        // ☁️ ซิงก์ตัวนับโควตารายวัน (คำถามนอกเรื่อง + ตรวจข้อสอบ) ข้ามอุปกรณ์ — เก็บรวมในเอกสารเดียวต่อ uid ต่อวัน (คีย์วันที่คำนวณตามเวลาไทย)
+        loadQuota: async (uid, dateKey) => {
+          try {
+            const docRef = doc(db, 'ai_quota', uid, 'daily', dateKey);
+            const snap = await getDoc(docRef);
+            return snap.exists() ? snap.data() : { offtopicCount: 0, gradingCount: 0 };
+          } catch (err) {
+            console.error('Load quota error:', err);
+            return null;
+          }
+        },
+        incrementQuota: async (uid, dateKey, field) => {
+          try {
+            const docRef = doc(db, 'ai_quota', uid, 'daily', dateKey);
+            await setDoc(docRef, { [field]: increment(1), updatedAt: serverTimestamp() }, { merge: true });
+            return true;
+          } catch (err) {
+            console.error('Increment quota error:', err);
+            return false;
           }
         }
       };
@@ -9540,11 +9573,34 @@ window.executeGlobalSearch = function() {
             <span class="font-extrabold text-slate-800 dark:text-white text-sm">ผล AI ตรวจคำตอบ</span>
             <span id="ai-grading-quota-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300" title="โควตาตรวจข้อสอบต่อวัน"></span>
         </div>
-        <button type="button" onclick="window.aiGradingRequestClose()" onmousedown="event.stopPropagation();" ontouchstart="event.stopPropagation();" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0">
-            <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
+        <div class="flex items-center gap-1 flex-shrink-0">
+            <button type="button" onclick="window.aiGradingShowHistory()" onmousedown="event.stopPropagation();" ontouchstart="event.stopPropagation();" title="ประวัติการตรวจข้อสอบทั้งหมด" class="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="history" class="w-4 h-4"></i>
+            </button>
+            <button type="button" onclick="window.aiGradingRequestClose()" onmousedown="event.stopPropagation();" ontouchstart="event.stopPropagation();" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
     </div>
     <div id="ai-grading-body" class="flex-1 p-5 text-sm overflow-y-auto text-slate-700 dark:text-slate-200 leading-relaxed"></div>
+</div>
+
+<!-- 📜 AI Grading History — ประวัติผลตรวจข้อสอบทั้งหมด (ดึงจาก Firestore ข้ามอุปกรณ์ / แยกอิสระ ไม่แตะโค้ดเดิม) -->
+<div id="ai-grading-history-modal" class="hidden fixed inset-0 z-[9999999] bg-black/50 flex items-center justify-center p-4" onclick="if(event.target===this) window.aiGradingHideHistory()">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                    <i data-lucide="history" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+                </div>
+                <span class="font-extrabold text-slate-800 dark:text-white text-sm">ประวัติการตรวจข้อสอบ</span>
+            </div>
+            <button type="button" onclick="window.aiGradingHideHistory()" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <div id="ai-grading-history-body" class="flex-1 p-4 overflow-y-auto text-sm text-slate-700 dark:text-slate-200"></div>
+    </div>
 </div>
 
 <script>
@@ -9554,6 +9610,16 @@ window.executeGlobalSearch = function() {
 
 // 🔑 Gemini API Key (⚠️ มองเห็นได้จาก Client-side — ใช้ทดสอบ/ส่วนตัว แนะนำตั้ง HTTP referrer restriction ใน Google Cloud Console)
 const AI_CHAT_API_KEY = "AQ.Ab8RN6K1"+"me0DgZDVFVS8L8g"+"CUsinmcf9"+"Sam0Aetd5s"+"ZJRY5yRw";
+
+// 📅 คีย์วันที่ตามเวลาไทย (Asia/Bangkok) — ใช้แทน new Date().toISOString().slice(0,10) เดิมซึ่งเป็นวันที่แบบ UTC
+// (ของเดิมทำให้โควตารีเซ็ตตอนตี 7 เช้าเวลาไทย แทนที่จะเป็นเที่ยงคืนจริง) ใช้ร่วมกันทั้งโควตาแชทนอกเรื่องและโควตาตรวจข้อสอบ
+function aiGetThaiDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
+}
 
 // 📝 System Prompt ของ "Niti Guide" ผู้ช่วยแนะนำการใช้งานเว็บไซต์
 const AI_CHAT_SYSTEM_PROMPT = `# Role and Objective
@@ -9820,7 +9886,7 @@ const AI_OFFTOPIC_DAILY_LIMIT = 5;
 
 function aiChatGetOffTopicKey() {
     const uid = (typeof state !== 'undefined' && state.user && state.user.uid) ? state.user.uid : 'guest';
-    const today = new Date().toISOString().slice(0, 10);
+    const today = aiGetThaiDateKey();
     return `ai_offtopic_${uid}_${today}`;
 }
 
@@ -9833,6 +9899,11 @@ function aiChatIncrementOffTopicCount() {
     const count = Math.min(aiChatGetOffTopicCount() + 1, AI_OFFTOPIC_DAILY_LIMIT);
     localStorage.setItem(aiChatGetOffTopicKey(), String(count));
     aiChatUpdateQuotaBadge();
+    // ☁️ ซิงก์ขึ้น Firestore ด้วย เพื่อให้ตัวเลขโควตาตรงกันทุกอุปกรณ์ (ไม่ await กันหน่วง UI)
+    if (typeof state !== 'undefined' && state.user && !state.user.isAnonymous && state.user.uid && window._fb && typeof window._fb.incrementQuota === 'function') {
+        window._fb.incrementQuota(state.user.uid, aiGetThaiDateKey(), 'offtopicCount')
+            .catch(err => console.error('[AI Chat] ซิงก์โควตานอกเรื่องขึ้น Firestore ไม่สำเร็จ:', err));
+    }
 }
 
 function aiChatUpdateQuotaBadge() {
@@ -10244,7 +10315,7 @@ const AI_GRADING_DAILY_LIMIT = 5;
 
 function aiGradingGetKey() {
     const uid = (typeof state !== 'undefined' && state.user && state.user.uid) ? state.user.uid : 'guest';
-    const today = new Date().toISOString().slice(0, 10);
+    const today = aiGetThaiDateKey();
     return `ai_grading_${uid}_${today}`;
 }
 
@@ -10256,6 +10327,11 @@ function aiGradingGetCount() {
 function aiGradingIncrementCount() {
     const count = Math.min(aiGradingGetCount() + 1, AI_GRADING_DAILY_LIMIT);
     localStorage.setItem(aiGradingGetKey(), String(count));
+    // ☁️ ซิงก์ขึ้น Firestore ด้วย เพื่อให้ตัวเลขโควตาตรงกันทุกอุปกรณ์ (ไม่ await กันหน่วง UI)
+    if (typeof state !== 'undefined' && state.user && !state.user.isAnonymous && state.user.uid && window._fb && typeof window._fb.incrementQuota === 'function') {
+        window._fb.incrementQuota(state.user.uid, aiGetThaiDateKey(), 'gradingCount')
+            .catch(err => console.error('[AI Grading] ซิงก์โควตาตรวจข้อสอบขึ้น Firestore ไม่สำเร็จ:', err));
+    }
 }
 
 function aiGradingUpdateQuotaBadge() {
@@ -10496,8 +10572,11 @@ window.aiGradeExam = async function(forceRefresh) {
         aiGradingSaveCache();
         // ☁️ ซิงก์ผลตรวจขึ้น Firestore ด้วย (ไม่ await กันหน่วง UI) เพื่อให้เห็นผลเดียวกันทุกอุปกรณ์
         if (window._fb && typeof window._fb.saveGradingResult === 'function') {
-            window._fb.saveGradingResult(state.user.uid, cacheKey, studentAnswer, rawResult)
-                .catch(err => console.error('[AI Grading] ซิงก์ผลตรวจขึ้น Firestore ไม่สำเร็จ:', err));
+            window._fb.saveGradingResult(state.user.uid, cacheKey, studentAnswer, rawResult, {
+                session: ctx.session || '',
+                category: ctx.category || '',
+                question: ctx.question || ''
+            }).catch(err => console.error('[AI Grading] ซิงก์ผลตรวจขึ้น Firestore ไม่สำเร็จ:', err));
         }
         body.innerHTML = aiChatFormatMarkdown(rawResult);
         if (window.lucide) lucide.createIcons({ root: body });
@@ -10520,8 +10599,96 @@ window.aiGradingRequestClose = function() {
     if (modal) modal.classList.add('hidden');
 };
 
+// 📜 เปิดหน้าต่างประวัติการตรวจข้อสอบทั้งหมด — ดึงจาก Firestore สด (ไม่ใช้ localStorage) เพื่อให้เห็นครบทุกอุปกรณ์
+window.aiGradingShowHistory = async function() {
+    if (!aiGradingIsLoggedIn()) {
+        if (typeof window.toggleLoginModal === 'function') window.toggleLoginModal(true);
+        else alert('กรุณาลงชื่อเข้าใช้ด้วย Google ก่อนดูประวัติการตรวจข้อสอบครับ 🔒');
+        return;
+    }
+    const modal = document.getElementById('ai-grading-history-modal');
+    const body = document.getElementById('ai-grading-history-body');
+    if (!modal || !body) return;
+    modal.classList.remove('hidden');
+    body.innerHTML = `<div class="flex items-center gap-2 text-slate-400"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>กำลังโหลดประวัติ...</span></div>`;
+    if (window.lucide) lucide.createIcons({ root: body });
+
+    if (!window._fb || typeof window._fb.listGradingResults !== 'function') {
+        body.innerHTML = `<p class="text-slate-400 text-center py-6">ไม่สามารถโหลดประวัติได้ตอนนี้ครับ</p>`;
+        return;
+    }
+    try {
+        const results = await window._fb.listGradingResults(state.user.uid);
+        if (!results || !results.length) {
+            body.innerHTML = `<p class="text-slate-400 text-center py-6">ยังไม่มีประวัติการตรวจข้อสอบครับ</p>`;
+            return;
+        }
+        window._aiGradingHistoryCache = {};
+        results.forEach(r => { window._aiGradingHistoryCache[r.id] = r; });
+
+        body.innerHTML = results.map(r => {
+            const scoreMatch = (r.resultText || '').match(/\*\*คะแนนรวม:\s*([^\*]+)\*\*/);
+            const scoreText = scoreMatch ? scoreMatch[1].trim() : '-';
+            const dateText = (r.updatedAt && typeof r.updatedAt.toDate === 'function')
+                ? r.updatedAt.toDate().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+                : '';
+            const labelParts = [r.category, r.session, r.question ? `ข้อ ${r.question}` : ''].filter(Boolean).map(aiChatEscapeHTML);
+            const label = labelParts.length ? labelParts.join(' · ') : 'ข้อสอบ';
+            return `<button type="button" onclick="window.aiGradingShowHistoryItem('${r.id.replace(/'/g, "\\'")}')" class="w-full text-left p-3 mb-2 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs">${label}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-black text-xs flex-shrink-0">${aiChatEscapeHTML(scoreText)}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1">${aiChatEscapeHTML(dateText)}</div>
+            </button>`;
+        }).join('');
+        if (window.lucide) lucide.createIcons({ root: body });
+    } catch (err) {
+        console.error('[AI Grading] โหลดประวัติไม่สำเร็จ:', err);
+        body.innerHTML = `<p class="text-rose-400 text-center py-6">โหลดประวัติไม่สำเร็จ ลองใหม่อีกครั้งครับ</p>`;
+    }
+};
+
+// 📄 คลิกรายการในประวัติ — เปิดผลตรวจเก่าขึ้นมาดูในพาแนลผลตรวจ (ไม่เสียโควตา เพราะแค่อ่านของเดิม)
+window.aiGradingShowHistoryItem = function(id) {
+    const item = window._aiGradingHistoryCache && window._aiGradingHistoryCache[id];
+    if (!item) return;
+    window.aiGradingHideHistory();
+    const modal = document.getElementById('ai-grading-modal');
+    const body = document.getElementById('ai-grading-body');
+    if (!modal || !body) return;
+    modal.classList.remove('hidden');
+    const labelParts = [item.category, item.session, item.question ? `ข้อ ${item.question}` : ''].filter(Boolean).map(aiChatEscapeHTML);
+    body.innerHTML = aiChatFormatMarkdown(item.resultText) +
+        `<div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">📜 ผลจากประวัติการตรวจ${labelParts.length ? ' (' + labelParts.join(' · ') + ')' : ''}</div>`;
+    if (window.lucide) lucide.createIcons({ root: body });
+};
+
+window.aiGradingHideHistory = function() {
+    const modal = document.getElementById('ai-grading-history-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
 
 // แสดงปุ่ม FAB เฉพาะผู้ใช้ที่ล็อกอินด้วย Google แล้วเท่านั้น
+// ☁️ ดึงตัวเลขโควตาจริงจาก Firestore มาทับ localStorage ของเครื่องนี้ — กันปัญหาเปิดเครื่องใหม่แล้วเห็นโควตาเป็น 0/5 ทั้งที่ใช้ไปแล้วจากเครื่องอื่น
+async function aiQuotaSyncFromCloud() {
+    if (typeof state === 'undefined' || !state.user || state.user.isAnonymous || !state.user.uid) return;
+    if (!window._fb || typeof window._fb.loadQuota !== 'function') return;
+    try {
+        const dateKey = aiGetThaiDateKey();
+        const remote = await window._fb.loadQuota(state.user.uid, dateKey);
+        if (remote) {
+            localStorage.setItem(aiChatGetOffTopicKey(), String(remote.offtopicCount || 0));
+            localStorage.setItem(aiGradingGetKey(), String(remote.gradingCount || 0));
+            aiChatUpdateQuotaBadge();
+            aiGradingUpdateQuotaBadge();
+        }
+    } catch (err) {
+        console.error('[AI Quota] ซิงก์โควตาจาก Firestore ไม่สำเร็จ:', err);
+    }
+}
+
 function aiChatUpdateVisibility() {
     const fab = document.getElementById('ai-chat-fab');
     if (!fab) return;
@@ -10539,6 +10706,10 @@ function aiChatUpdateVisibility() {
         if (!window._aiChatHistoryLoaded) {
             window._aiChatHistoryLoaded = true;
             aiChatLoadHistory();
+        }
+        if (!window._aiQuotaSynced) {
+            window._aiQuotaSynced = true;
+            aiQuotaSyncFromCloud();
         }
     } else {
         if (!fab.classList.contains('hidden')) {
