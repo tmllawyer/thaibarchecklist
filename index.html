@@ -445,13 +445,6 @@
         #criminal-subjects button, #civil-subjects button, #document-subjects button, 
         #modal-criminal-subjects button, #modal-civil-subjects button, #modal-document-subjects button { cursor: pointer; }
 
-        /* Priority badge pulse when high */
-        .priority-high-pulse { animation: priorityPulse 2s ease-in-out infinite; }
-        @keyframes priorityPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-            50%       { box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
-        }
-
         .exam-collapsible {
             display: grid; grid-template-rows: 1fr;
             transition: grid-template-rows 0.4s ease-out, opacity 0.3s ease;
@@ -994,10 +987,6 @@
                         ความคืบหน้าการอ่าน <span class="text-slate-400 dark:text-slate-500 font-medium text-xs sm:text-sm ml-1">(แตะที่การ์ดเพื่อดูรายวิชา)</span>
                     </span>
                     <div class="flex items-center gap-2">
-                        <button id="dashboard-high-priority" onclick="filterFromDashboard('เก็งข้อสอบ'); this.blur();"
-                            class="hidden text-[10px] sm:text-xs font-extrabold px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/50 btn-tactile shadow-sm"
-                            title="คลิกเพื่อดูวิชาที่เก็งข้อสอบ">
-                        </button>
                         <button onclick="toggleDashboard()" id="dashboard-toggle-btn"
                             class="flex items-center gap-1.5 sm:gap-2 text-amber-600 dark:text-amber-400 text-[10px] sm:text-xs font-extrabold px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-500/15 btn-tactile border border-amber-200 dark:border-amber-500/40 hover:bg-amber-100 dark:hover:bg-amber-500/25 hover:border-amber-300 dark:hover:border-amber-500/60 hover:shadow-md shadow-sm transition-all active:scale-95">
                             <i data-lucide="layout-list" class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0"></i>
@@ -2615,7 +2604,6 @@
             searchTerm: '', currentGroup: 1,
             selectedSubjectFilter: "-- เลือกวิชา ทั้งหมด --",
             showOnlyStarred: false, 
-            _priorityFilter: null, 
             readFilter: 'all', 
             currentPage: 1,
             itemsPerPage: window.innerWidth < 1024 ? 15 : 25,
@@ -2959,29 +2947,7 @@
 
         function filterFromDashboard(keyword) {
             toggleLegModal(false); // ปิด modal เมื่อมีการกดเลือกวิชา
-            
-            if (keyword === 'เก็งข้อสอบ') {
-                state.searchTerm = '';
-                state.currentGroup = 4;
-                state.selectedSubjectFilter = "-- เลือกวิชา ทั้งหมด --";
-                state.currentPage = 1;
-                state.showOnlyStarred = false;
-                state.readFilter = 'all';
-                updateReadFilterUI();
-                _resetStarFilterBtn();
-                document.getElementById('search-input').value = '';
-                document.getElementById('subject-filter').value = "-- เลือกวิชา ทั้งหมด --";
-                _syncCustomLawDropdownLabel("-- เลือกวิชา ทั้งหมด --");
-                renderTabs();
-                renderTable();
-                showFilterToast('เก็งข้อสอบ 🎯');
-                
-                const filterSection = document.getElementById('filter-section');
-                if (filterSection) setTimeout(() => filterSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-                return;
-            }
 
-            state._priorityFilter = null;
             state.currentGroup = 4;
             state.currentPage = 1;
             state.showOnlyStarred = false;
@@ -3051,20 +3017,6 @@
 
             const crimDays = getDaysLeft(EXAM_DATES.criminal);
             const civDays  = getDaysLeft(EXAM_DATES.civil);
-
-            const highPriorityItems = allItems.filter(i => {
-                const meta = state.itemMeta[i.id] || {};
-                return meta.priority === 'high';
-            });
-            const highPriorityEl = document.getElementById('dashboard-high-priority');
-            if (highPriorityEl) {
-                if (highPriorityItems.length > 0) {
-                    highPriorityEl.textContent = `⭐ เก็งข้อสอบ: ${highPriorityItems.length} รายการ`;
-                    highPriorityEl.classList.remove('hidden');
-                } else {
-                    highPriorityEl.classList.add('hidden');
-                }
-            }
 
             const cMini = document.getElementById('criminal-countdown-mini');
             const vMini = document.getElementById('civil-countdown-mini');
@@ -3617,7 +3569,6 @@
 
         function toggleStarFilter() {
             state.showOnlyStarred = !state.showOnlyStarred;
-            state._priorityFilter = null; 
             const btn = document.getElementById('star-filter-btn');
             
             if (state.showOnlyStarred) {
@@ -3691,13 +3642,6 @@
             return `อ่านล่าสุด: ${date.getDate()} ${months[date.getMonth()]} ${(date.getFullYear() + 543).toString().slice(-2)}`;
         }
 
-        function getPriorityStyle(p) {
-            if (p === 'high') return 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800/80 dark:text-red-400 priority-high-pulse';
-            if (p === 'medium') return 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800/80 dark:text-amber-400';
-            if (p === 'low') return 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/80 dark:text-emerald-400';
-            return 'bg-slate-50 border-dashed border-slate-300 text-slate-500 dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-400 hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10';
-        }
-
         let filterToastTimeout = null;
         function showFilterToast(keyword) {
             const toast = document.getElementById('filter-toast');
@@ -3714,26 +3658,9 @@
             const toast = document.getElementById('filter-toast');
             if (toast) toast.classList.remove('visible');
             if (filterToastTimeout) clearTimeout(filterToastTimeout);
-            state._priorityFilter = null; 
             setGroup(state.currentGroup);
         }
         window.clearDashboardFilter = clearDashboardFilter;
-
-        function getPriorityIcon(p) {
-            if (p === 'high') return '<span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></span> เก็งข้อสอบ';
-            if (p === 'medium') return '<span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]"></span> พอจำได้';
-            if (p === 'low') return '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span> แม่นแล้ว';
-            return '<span class="w-2.5 h-2.5 rounded-full border-2 border-slate-300 dark:border-slate-600"></span> สถานะ';
-        }
-
-        function togglePriority(itemId) {
-            if (!state.itemMeta[itemId]) state.itemMeta[itemId] = {};
-            const p = state.itemMeta[itemId].priority;
-            const nextP = p === 'high' ? 'medium' : p === 'medium' ? 'low' : p === 'low' ? null : 'high';
-            state.itemMeta[itemId].priority = nextP;
-            markDirty();
-            renderTable();
-        }
 
         let _cachedAllData = null;
         let _cachedCustomLen = -1;
@@ -3812,11 +3739,6 @@
                 if (state.readFilter === 'read' && !isRead) return false;
                 if (state.readFilter === 'unread' && isRead) return false;
 
-                if (state._priorityFilter) {
-                    const meta = state.itemMeta[item.id] || {};
-                    if (meta.priority !== state._priorityFilter) return false;
-                }
-
                 if (state._hasFileFilter) {
                     const hasFile = hasNoteContent(noteObj) || (state.pdfLinks[item.id] || []).length > 0;
                     if (!hasFile) return false;
@@ -3840,7 +3762,6 @@
 
                 if (state.searchTerm) return matchesSearch && matchesDropdown;
                 if (state.selectedSubjectFilter !== "-- เลือกวิชา ทั้งหมด --") return matchesDropdown;
-                if (state._priorityFilter) return true; 
                 if (state.currentGroup === 4) return true;
                 return item.group === state.currentGroup;
             });
@@ -3967,7 +3888,7 @@
             const allData = getAllData();
             const hasActiveFilter = !!state.searchTerm || state.showOnlyStarred ||
                 state.selectedSubjectFilter !== "-- เลือกวิชา ทั้งหมด --" ||
-                !!state._priorityFilter || state.readFilter !== 'all';
+                state.readFilter !== 'all';
 
             document.getElementById('group-tabs').innerHTML = GROUP_ORDER.map(groupNum => {
                 const label = GROUPS[groupNum];
@@ -4070,11 +3991,6 @@
                             </button>
                             `}
                             
-                            <button type="button" onclick="togglePriority('${item.id}')" title="ระดับความพร้อมสอบ"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-[11px] font-bold transition-all shadow-sm active:scale-95 ${getPriorityStyle(meta.priority)}">
-                                ${getPriorityIcon(meta.priority)}
-                            </button>
-
                             <button type="button" onclick="toggleSubjectStar('${item.id}')" title="มาร์คสำคัญ"
                                 class="inline-flex items-center justify-center w-8 h-8 rounded-xl border text-[11px] font-bold transition-all shadow-sm active:scale-95 ${noteObj.isHighlighted ? 'bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/50 text-amber-500' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10'}">
                                 <i data-lucide="star" class="w-3.5 h-3.5 ${noteObj.isHighlighted ? 'fill-amber-500' : ''}"></i>
@@ -4161,11 +4077,6 @@
                         </button>
                         `}
 
-                        <button type="button" onclick="togglePriority('${item.id}')" title="ระดับความพร้อมสอบ"
-                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[11px] font-bold transition-all shadow-sm active:scale-95 ${getPriorityStyle(meta.priority)}">
-                            ${getPriorityIcon(meta.priority)}
-                        </button>
-
                         <button type="button" onclick="toggleSubjectStar('${item.id}')" title="มาร์คสำคัญ"
                             class="inline-flex items-center justify-center w-8 h-8 rounded-xl border text-[11px] font-bold transition-all shadow-sm active:scale-95 ${noteObj.isHighlighted ? 'bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/50 text-amber-500' : 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-amber-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10'}">
                             <i data-lucide="star" class="w-3.5 h-3.5 ${noteObj.isHighlighted ? 'fill-amber-500' : ''}"></i>
@@ -4251,7 +4162,6 @@
             state.currentGroup = groupId;
             state.searchTerm = '';
             state.selectedSubjectFilter = "-- เลือกวิชา ทั้งหมด --";
-            state._priorityFilter = null; 
             state._hasFileFilter = false;
             state.currentPage = 1;
             
