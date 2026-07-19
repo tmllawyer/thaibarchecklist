@@ -1601,26 +1601,44 @@
         </div>
     </div>
 
-    <div id="podcast-modal" class="hidden fixed inset-0 bg-slate-900/50 dark:bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center z-[150] p-0 sm:p-4" onclick="if(event.target===this) closePodcastModal()">
-        <div class="slide-up bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full sm:max-w-lg border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="bg-slate-900 dark:bg-slate-950 px-5 py-4 sm:px-6 sm:py-5 flex flex-col gap-1 flex-shrink-0 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                <div class="flex justify-between items-start w-full gap-2 relative z-10">
-                    <div class="min-w-0 flex-1">
-                        <h3 class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2 sm:gap-2.5">
-                            <i data-lucide="headphones" class="text-indigo-400 w-4 h-4 sm:w-5 sm:h-5"></i>
-                            พอดแคสสรุปเสียง
-                        </h3>
-                        <p id="podcast-modal-subject" class="text-xs sm:text-sm font-medium text-indigo-200/80 mt-1 truncate max-w-xs sm:max-w-sm"></p>
-                    </div>
-                    <button type="button" onclick="closePodcastModal()" class="text-slate-400 hover:text-white transition-colors p-1.5 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-full btn-tactile flex-shrink-0">
-                        <i data-lucide="x" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+    <!-- 🎧 พอดแคสหน้าต่างลอย: ลาก/ย่อ-ขยาย/วางมุมไหนก็ได้ ไม่บล็อกหน้าเว็บ (namespace "podcast-" แยกอิสระ ไม่แตะ law-sidebar เดิม) -->
+    <div id="podcast-modal" class="hidden flex-col fixed z-[500] bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.35)] border border-slate-200 dark:border-slate-800 overflow-hidden"
+        style="width:340px; height:280px; min-width:280px; min-height:190px; bottom:90px; right:16px; top:auto; left:auto;">
+
+        <!-- 8 Resize Handles -->
+        <div class="podcast-resize-edge absolute top-0 left-4 right-4 h-2 cursor-n-resize z-10 touch-none" data-dir="n"></div>
+        <div class="podcast-resize-edge absolute bottom-0 left-4 right-4 h-2 cursor-s-resize z-10 touch-none" data-dir="s"></div>
+        <div class="podcast-resize-edge absolute left-0 top-4 bottom-4 w-2 cursor-w-resize z-10 touch-none" data-dir="w"></div>
+        <div class="podcast-resize-edge absolute right-0 top-4 bottom-4 w-2 cursor-e-resize z-10 touch-none" data-dir="e"></div>
+        <div class="podcast-resize-edge absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-20 touch-none" data-dir="nw"></div>
+        <div class="podcast-resize-edge absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-20 touch-none" data-dir="ne"></div>
+        <div class="podcast-resize-edge absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-20 touch-none" data-dir="sw"></div>
+        <div class="podcast-resize-edge absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-20 touch-none" data-dir="se"></div>
+
+        <div id="podcast-modal-header" class="bg-slate-900 dark:bg-slate-950 px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col gap-0.5 flex-shrink-0 relative overflow-hidden cursor-move select-none touch-none">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="flex justify-between items-start w-full gap-2 relative z-10">
+                <div class="min-w-0 flex-1 pointer-events-none">
+                    <h3 class="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="headphones" class="text-indigo-400 w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                        พอดแคสสรุปเสียง
+                    </h3>
+                    <p id="podcast-modal-subject" class="text-[10px] sm:text-xs font-medium text-indigo-200/80 mt-0.5 truncate max-w-[160px] sm:max-w-[220px]"></p>
+                </div>
+                <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 relative z-20">
+                    <button type="button" id="podcast-maximize-btn" onclick="togglePodcastMaximize()" title="ขยายเต็มจอ / คืนขนาด"
+                        class="text-slate-400 hover:text-indigo-400 transition-colors p-1.5 bg-slate-800 hover:bg-slate-700 rounded-full btn-tactile">
+                        <i data-lucide="maximize-2" id="podcast-maximize-icon" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" onclick="closePodcastModal()" title="ปิด"
+                        class="text-slate-400 hover:text-white transition-colors p-1.5 bg-slate-800 hover:bg-slate-700 rounded-full btn-tactile">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
                     </button>
                 </div>
             </div>
-            <div class="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900 p-4 sm:p-5">
-                <iframe id="podcast-modal-iframe" src="" class="w-full aspect-video border-none rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-            </div>
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-900 p-2 sm:p-2.5">
+            <iframe id="podcast-modal-iframe" src="" class="w-full h-full border-none rounded-xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin"></iframe>
         </div>
     </div>
 
@@ -4717,13 +4735,209 @@
             document.getElementById('podcast-modal-iframe').src = toEmbedUrl(item.podcastUrl);
             const modal = document.getElementById('podcast-modal');
             modal.classList.remove('hidden');
+            modal.classList.add('flex');
             lucide.createIcons({ node: modal });
+            // 🎧 คืนตำแหน่ง/ขนาดล่าสุดที่ผู้ใช้เคยลาก/ปรับไว้ (ดูฟังก์ชันจริงในบล็อก DRAG/RESIZE ด้านล่าง)
+            if (typeof window.podcastRestoreRect === 'function') window.podcastRestoreRect();
         };
 
         window.closePodcastModal = function() {
-            document.getElementById('podcast-modal').classList.add('hidden');
+            const modal = document.getElementById('podcast-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
             document.getElementById('podcast-modal-iframe').src = ''; // หยุดเล่นเสียงทันทีที่ปิด modal
         };
+
+        // ============================================================
+        // 🎧 DRAG, 8-DIRECTION RESIZE & MAXIMIZE — PODCAST FLOATING WINDOW
+        // (namespace "podcast" แยกอิสระทั้งหมด ไม่ยุ่งกับโค้ด law-sidebar เดิม)
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const pWin    = document.getElementById('podcast-modal');
+            const pHeader = document.getElementById('podcast-modal-header');
+            if (!pWin || !pHeader) return;
+
+            const P_MIN_W = 280, P_MIN_H = 190;
+            const P_LS_KEY = 'podcastModalRect';
+
+            let pIsMaximized = false;
+            let pSavedRect   = null;
+
+            function pSaveRectToStorage() {
+                if (pIsMaximized) return;
+                const r = pWin.getBoundingClientRect();
+                try {
+                    localStorage.setItem(P_LS_KEY, JSON.stringify({
+                        left: Math.round(r.left), top: Math.round(r.top),
+                        width: Math.round(r.width), height: Math.round(r.height)
+                    }));
+                } catch(e) {}
+            }
+
+            function pLoadRectFromStorage() {
+                try {
+                    const raw = localStorage.getItem(P_LS_KEY);
+                    if (!raw) return null;
+                    const r = JSON.parse(raw);
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    r.width  = Math.max(P_MIN_W, Math.min(r.width,  vw - 16));
+                    r.height = Math.max(P_MIN_H, Math.min(r.height, vh - 16));
+                    r.left   = Math.max(8, Math.min(r.left, vw - r.width - 8));
+                    r.top    = Math.max(8, Math.min(r.top,  vh - r.height - 8));
+                    return r;
+                } catch(e) { return null; }
+            }
+
+            function pApplyRect(r) {
+                pWin.style.left   = r.left   + 'px';
+                pWin.style.top    = r.top    + 'px';
+                pWin.style.width  = r.width  + 'px';
+                pWin.style.height = r.height + 'px';
+                pWin.style.right  = 'auto';
+                pWin.style.bottom = 'auto';
+            }
+
+            // เรียกจาก openPodcastModal() ทุกครั้งที่เปิดหน้าต่าง
+            // ถ้าเคยลาก/ปรับขนาดไว้ก่อนหน้า → คืนตำแหน่งเดิม, ถ้าเปิดครั้งแรก → เช็คว่าล้นจอ (เช่นจอมือถือแคบ) แล้วดึงกลับเข้ามาในจอ
+            window.podcastRestoreRect = function() {
+                if (pIsMaximized) return;
+                const r = pLoadRectFromStorage();
+                if (r) { pApplyRect(r); return; }
+                const vw = window.innerWidth, vh = window.innerHeight;
+                const rect = pWin.getBoundingClientRect();
+                let newW = Math.min(rect.width,  vw - 16);
+                let newH = Math.min(rect.height, vh - 16);
+                let newLeft = Math.max(8, Math.min(rect.left, vw - newW - 8));
+                let newTop  = Math.max(8, Math.min(rect.top,  vh - newH - 8));
+                pApplyRect({ left: newLeft, top: newTop, width: newW, height: newH });
+            };
+
+            // ── Maximize / Restore ───────────────────────────────────
+            window.togglePodcastMaximize = function() {
+                const icon = document.getElementById('podcast-maximize-icon');
+                if (!pIsMaximized) {
+                    const r = pWin.getBoundingClientRect();
+                    pSavedRect = { left: r.left, top: r.top, width: r.width, height: r.height };
+                    pWin.style.cssText = [
+                        'position:fixed', 'left:0', 'top:0',
+                        'width:100vw', 'height:100vh',
+                        'right:auto', 'bottom:auto',
+                        'border-radius:0', 'z-index:500',
+                        'min-width:unset', 'min-height:unset'
+                    ].join(';');
+                    pIsMaximized = true;
+                    if (icon) { icon.setAttribute('data-lucide', 'minimize-2'); lucide.createIcons({ nodes: [icon] }); }
+                    pWin.querySelectorAll('.podcast-resize-edge').forEach(h => h.style.display = 'none');
+                } else {
+                    const r = pSavedRect || pLoadRectFromStorage() || { left: window.innerWidth - 356, top: window.innerHeight - 370, width: 340, height: 280 };
+                    pWin.style.cssText = '';
+                    pApplyRect(r);
+                    pWin.style.position  = 'fixed';
+                    pWin.style.zIndex    = '500';
+                    pWin.style.minWidth  = P_MIN_W + 'px';
+                    pWin.style.minHeight = P_MIN_H + 'px';
+                    pIsMaximized = false;
+                    if (icon) { icon.setAttribute('data-lucide', 'maximize-2'); lucide.createIcons({ nodes: [icon] }); }
+                    pWin.querySelectorAll('.podcast-resize-edge').forEach(h => h.style.display = '');
+                }
+            };
+
+            pHeader.addEventListener('dblclick', () => window.togglePodcastMaximize());
+
+            // ── Drag ─────────────────────────────────────────────────
+            let pIsDragging = false;
+            let pdStartX, pdStartY, pdStartLeft, pdStartTop;
+
+            const pStartDrag = (e) => {
+                if (pIsMaximized) return;
+                if (e.target.closest('button')) return;
+                pIsDragging = true;
+                const t = e.touches ? e.touches[0] : e;
+                pdStartX = t.clientX; pdStartY = t.clientY;
+                const r = pWin.getBoundingClientRect();
+                pdStartLeft = r.left; pdStartTop = r.top;
+            };
+
+            const pDoDrag = (e) => {
+                if (!pIsDragging) return;
+                e.preventDefault();
+                const t = e.touches ? e.touches[0] : e;
+                let newLeft = pdStartLeft + (t.clientX - pdStartX);
+                let newTop  = pdStartTop  + (t.clientY - pdStartY);
+                newLeft = Math.max(-pWin.offsetWidth + 60, Math.min(newLeft, window.innerWidth - 60));
+                newTop  = Math.max(0, Math.min(newTop, window.innerHeight - 44));
+                pWin.style.left = newLeft + 'px';
+                pWin.style.top  = newTop  + 'px';
+                pWin.style.right = 'auto'; pWin.style.bottom = 'auto';
+            };
+
+            // ── 8-Direction Resize ───────────────────────────────────
+            let pIsResizing = false;
+            let pResizeDir = '';
+            let prStartX, prStartY, prStartLeft, prStartTop, prStartW, prStartH;
+
+            const pStartResize = (dir, e) => {
+                if (pIsMaximized) return;
+                pIsResizing = true;
+                pResizeDir = dir;
+                const t = e.touches ? e.touches[0] : e;
+                prStartX = t.clientX; prStartY = t.clientY;
+                const r = pWin.getBoundingClientRect();
+                prStartLeft = r.left; prStartTop = r.top;
+                prStartW = r.width;   prStartH = r.height;
+                e.preventDefault();
+            };
+
+            const pDoResize = (e) => {
+                if (!pIsResizing) return;
+                e.preventDefault();
+                const t = e.touches ? e.touches[0] : e;
+                const dx = t.clientX - prStartX;
+                const dy = t.clientY - prStartY;
+                const vw = window.innerWidth, vh = window.innerHeight;
+                let newLeft = prStartLeft, newTop = prStartTop;
+                let newW = prStartW, newH = prStartH;
+
+                if (pResizeDir.includes('e')) newW = prStartW + dx;
+                if (pResizeDir.includes('w')) { newW = prStartW - dx; newLeft = prStartLeft + dx; }
+                if (pResizeDir.includes('s')) newH = prStartH + dy;
+                if (pResizeDir.includes('n')) { newH = prStartH - dy; newTop = prStartTop + dy; }
+
+                if (newW < P_MIN_W) { newW = P_MIN_W; if (pResizeDir.includes('w')) newLeft = prStartLeft + prStartW - P_MIN_W; }
+                if (newH < P_MIN_H) { newH = P_MIN_H; if (pResizeDir.includes('n')) newTop  = prStartTop  + prStartH - P_MIN_H; }
+                if (newLeft < 0) { newW += newLeft; newLeft = 0; if (newW < P_MIN_W) newW = P_MIN_W; }
+                if (newTop  < 0) { newH += newTop;  newTop  = 0; if (newH < P_MIN_H) newH = P_MIN_H; }
+                if (newLeft + newW > vw) newW = vw - newLeft;
+                if (newTop  + newH > vh) newH = vh - newTop;
+
+                pWin.style.left   = newLeft + 'px';
+                pWin.style.top    = newTop  + 'px';
+                pWin.style.width  = newW    + 'px';
+                pWin.style.height = newH    + 'px';
+                pWin.style.right  = 'auto'; pWin.style.bottom = 'auto';
+            };
+
+            // ── Stop all + save ──────────────────────────────────────
+            const pStopAll = () => {
+                if (pIsDragging || pIsResizing) pSaveRectToStorage();
+                pIsDragging = false; pIsResizing = false; pResizeDir = '';
+            };
+
+            // ── Attach events ────────────────────────────────────────
+            pHeader.addEventListener('mousedown',  pStartDrag);
+            pHeader.addEventListener('touchstart', pStartDrag, { passive: true });
+
+            pWin.querySelectorAll('.podcast-resize-edge').forEach(handle => {
+                const dir = handle.dataset.dir;
+                handle.addEventListener('mousedown',  (e) => { pStartResize(dir, e); });
+                handle.addEventListener('touchstart', (e) => { pStartResize(dir, e); }, { passive: false });
+            });
+
+            window.addEventListener('mousemove', (e) => { pDoDrag(e); pDoResize(e); }, { passive: false });
+            window.addEventListener('touchmove', (e) => { pDoDrag(e); pDoResize(e); }, { passive: false });
+            window.addEventListener('mouseup',   pStopAll);
+            window.addEventListener('touchend',  pStopAll);
+        });
 
         // ==========================================
         // FUTURE UPDATE PIPELINE: SMART ASSIST 2.0
